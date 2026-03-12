@@ -18,7 +18,6 @@ return new class extends Migration
             $table->char('youtube_video_id', 11)->unique();
             $table->string('title');
             $table->text('description')->nullable();
-            $table->timestamp('published_at')->nullable();
             $table->unsignedBigInteger('view_count')->default(0);
             $table->unsignedBigInteger('like_count')->default(0);
             $table->unsignedBigInteger('comment_count')->default(0);
