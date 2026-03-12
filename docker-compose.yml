@@ -11,6 +11,9 @@ services:
       - .:/var/www/html:z  # The :z maps permissions for Fedora SELinux
     networks:
       - scraper-network
+    ports:
+      - "8000:8000"
+      - "5173:5173"
 
   # Postgres 18 Database
   db:

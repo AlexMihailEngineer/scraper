@@ -11,7 +11,16 @@ export default defineConfig({
         tailwindcss(),
     ],
     server: {
+        // Essential for Docker: Listen on all network interfaces
+        host: '0.0.0.0',
+        port: 5173,
+        strictPort: true,
+        // Tells the browser how to find the Hot Module Replacement server
+        hmr: {
+            host: 'localhost',
+        },
         watch: {
+            usePolling: true, // Recommended for external HDDs/Network drives
             ignored: ['**/storage/framework/views/**'],
         },
     },

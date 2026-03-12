@@ -6,6 +6,8 @@ RUN apk add --no-cache postgresql-dev libpq
 # Install the extension you need for Laravel + Postgres
 RUN docker-php-ext-install pdo pdo_pgsql
 
+RUN apk add --no-cache nodejs npm
+
 # Install Composer so you can manage scraping packages (Guzzle, Panther, etc.)
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
