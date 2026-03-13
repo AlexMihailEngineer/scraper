@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Google\Service\YouTube;
+use Google\Client;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -11,7 +13,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(YouTube::class, function ($app) {
+            $client = new Client();
+            $client->setDeveloperKey(config('services.youtube.key'));
+            return new YouTube($client);
+        });
     }
 
     /**

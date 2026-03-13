@@ -36,11 +36,11 @@ class WebScraper extends Command
         }
 
         // Example: Extract Hacker News headlines
-        $crawler2 = $crawler->filter('.titleline > a')->each(function (Crawler $node) {
+        $crawler = $crawler->filter('.titleline > a')->each(function (Crawler $node) {
             $this->info($node->text() . " [" . $node->attr('href') . "]");
         });
 
-        foreach ($crawler2 as $domElement) {
+        foreach ($crawler as $domElement) {
             var_dump($domElement?->nodeName);
         }
     }
