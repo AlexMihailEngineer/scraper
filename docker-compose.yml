@@ -1,37 +1,45 @@
-services:
-  # PHP container for your scraping logic
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: scraper-app
-    container_name: scraper-app
-    tty: true
-    volumes:
-      - .:/var/www/html:z  # The :z maps permissions for Fedora SELinux
-    networks:
-      - scraper-network
-    ports:
-      - "8000:8000"
-      - "5173:5173"
+    services:
+      # PHP container for your scraping logic
+      app:
+        build:
+          context: .
+          dockerfile: Dockerfile
+        image: scraper-app
+        container_name: scraper-app
+        tty: true
+        volumes:
+          - .:/var/www/html:z  # The :z maps permissions for Fedora SELinux
+        networks:
+          - scraper-network
+        ports:
+          - "8000:8000"
+          - "5173:5173"
+        environment:
+          - DB_HOST=db
+          - DB_PORT=5432
+          - DB_DATABASE=scraper_db
+          - DB_USERNAME=user
+          - DB_PASSWORD=password
+        # <-- NEW line
+        command: php artisan serve --host=0.0.0.0 --port=8000
 
-  # Postgres 18 Database
-  db:
-    image: postgres:18-alpine
-    container_name: scraper-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: scraper_db
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-    volumes:
-      # Stores your DB data on your HDD so it persists
-      - ./docker/postgres/data:/var/lib/postgresql/data:z
-    networks:
-      - scraper-network
-    ports:
-      - "5432:5432"
+      # Postgres 18 Database
+      db:
+        image: postgres:18-alpine
+        container_name: scraper-db
+        restart: unless-stopped
+        environment:
+          POSTGRES_DB: scraper_db
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+        volumes:
+          # Stores your DB data on your HDD so it persists
+          - ./docker/postgres/data:/var/lib/postgresql/data:z
+        networks:
+          - scraper-network
+        ports:
+          - "5432:5432"
 
-networks:
-  scraper-network:
-    driver: bridge
+    networks:
+      scraper-network:
+        driver: bridge
