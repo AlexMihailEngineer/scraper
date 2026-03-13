@@ -2,40 +2,46 @@
 
 namespace App\Console\Commands;
 
-use App\Services\YoutubeScraperService;
+use App\Models\YoutubeChannel;
+use App\Jobs\SyncYouTubeChannelJob;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Log;
 
 class YouTubeScraper extends Command
 {
     /**
      * The name and signature of the console command.
-     *
-     * @var string
      */
-    protected $signature = 'app:youtube-scraper';
+    protected $signature = 'scrape:youtube'; // Renamed to match the scrape:web convention
 
     /**
      * The console command description.
-     *
-     * @var string
      */
-    protected $description = 'Command description';
+    protected $description = 'Dispatch jobs to sync latest videos and metrics for all active YouTube channels';
 
     /**
      * Execute the console command.
      */
-    public function handle(YoutubeScraperService $scraper)
+    public function handle()
     {
-        $videoId = "2vjPBrBU-TM";
-        $video = $scraper->getVideoById($videoId);
+        $this->info("Starting YouTube channel synchronization...");
 
-        if (!$video) {
-            $this->error("Video not found or API error.");
+        // 1. Fetch all channels from the database
+        // (You might want to add an 'is_active' boolean to the youtube_channels table later)
+        $channels = YoutubeChannel::all();
+
+        if ($channels->isEmpty()) {
+            $this->warn("No YouTube channels found in the database. Please seed some first.");
             return;
         }
 
-        $this->info("Title: " . $video->getSnippet()->getTitle());
-        $this->comment("Views: " . $video->getStatistics()->getViewCount());
+        $this->info("Found " . $channels->count() . " channel(s). Dispatching to queue...");
+
+        // 2. Dispatch a job for each channel
+        foreach ($channels as $channel) {
+            SyncYouTubeChannelJob::dispatch($channel);
+            $this->line("<info>Dispatched:</info> {$channel->name} ({$channel->youtube_channel_id})");
+        }
+
+        $this->info("All YouTube sync jobs have been sent to the queue. Run 'php artisan queue:work' to process them.");
     }
 }
