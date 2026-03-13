@@ -20,6 +20,7 @@ return new class extends Migration
             $table->boolean('is_successful')->default(false);
             $table->text('error_message')->nullable();
             $table->timestamp('scraped_at')->useCurrent();
+            $table->timestamps();
 
             // Indexing for quick health dashboard queries
             $table->index(['web_scraping_target_id', 'scraped_at']);

@@ -3,45 +3,42 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use App\Services\WebScraperService;
-use Symfony\Component\DomCrawler\Crawler;
+use App\Models\WebScrapingTarget;
+use App\Jobs\ScrapeWebTargetJob;
 
 class WebScraper extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'app:web-scraper';
+    // Ensure your signature matches how you want to call it,
+    // e.g., php artisan scrape:web {domain?}
+    protected $signature = 'scrape:web {domain?}';
+    protected $description = 'Dispatch scraping jobs for registered web targets';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Command description';
-
-    /**
-     * Execute the console command.
-     */
-    public function handle(WebScraperService $scraper)
+    public function handle()
     {
-        $url = 'https://news.ycombinator.com/';
-        $crawler = $scraper->scrapeStaticPage($url);
+        $domain = $this->argument('domain');
 
-        if (!$crawler) {
-            $this->error("Could not reach the page.");
+        // 1. Fetch the targets from the database
+        $query = WebScrapingTarget::where('is_active', true);
+
+        if ($domain) {
+            $query->where('domain', $domain);
+        }
+
+        $targets = $query->get();
+
+        if ($targets->isEmpty()) {
+            $this->warn("No active scraping targets found.");
             return;
         }
 
-        // Example: Extract Hacker News headlines
-        $crawler = $crawler->filter('.titleline > a')->each(function (Crawler $node) {
-            $this->info($node->text() . " [" . $node->attr('href') . "]");
-        });
+        $this->info("Found " . $targets->count() . " target(s). Dispatching to queue...");
 
-        foreach ($crawler as $domElement) {
-            var_dump($domElement?->nodeName);
+        // 2. Dispatch each target to the background Job
+        foreach ($targets as $target) {
+            ScrapeWebTargetJob::dispatch($target);
+            $this->line("<info>Dispatched:</info> {$target->name} ({$target->start_url})");
         }
+
+        $this->info("All jobs have been sent to the queue. Run 'php artisan queue:work' to process them.");
     }
 }
