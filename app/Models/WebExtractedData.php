@@ -26,6 +26,6 @@ class WebExtractedData extends Model
      */
     public function execution(): BelongsTo
     {
-        return $this->belongsTo(WebScrapeExecution::class);
+        return $this->belongsTo(WebScrapeExecution::class, 'web_scrape_execution_id');
     }
 }
