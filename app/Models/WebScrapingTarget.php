@@ -11,6 +11,8 @@ class WebScrapingTarget extends Model
         'name',
         'domain',
         'start_url',
+        'max_depth',        // Added for BFS
+        'crawl_boundary',   // Added for BFS
         'parser_class',
         'is_active',
         'scrape_interval_minutes',
@@ -30,5 +32,13 @@ class WebScrapingTarget extends Model
     public function executions(): HasMany
     {
         return $this->hasMany(WebScrapeExecution::class);
+    }
+
+    /**
+     * The discovery queue associated with this target.
+     */
+    public function crawlQueue()
+    {
+        return $this->hasMany(WebCrawlQueue::class);
     }
 }
