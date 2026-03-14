@@ -11,41 +11,56 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Throwable;
 
 class SyncYouTubeChannelJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $tries = 3;
+    public int $timeout = 60; // APIs should respond quickly
+    public int $backoff = 300; // Wait 5 minutes before retrying API failures
+
     public function __construct(public YoutubeChannel $channel) {}
 
     public function handle(YoutubeScraperService $scraper): void
     {
-        // Use YOUR service using the Google SDK
-        $videos = $scraper->getLatestVideosForChannel($this->channel->youtube_channel_id);
+        try {
+            $videos = $scraper->getLatestVideosForChannel($this->channel->youtube_channel_id);
 
-        foreach ($videos as $videoData) {
-            // 1. Save or update the Video Metadata
-            $video = YoutubeVideo::updateOrCreate(
-                [
-                    'youtube_channel_id' => $this->channel->id,
-                    'youtube_video_id' => $videoData->getId(),
-                ],
-                [
-                    'title' => $videoData->getSnippet()->getTitle(),
-                    'description' => $videoData->getSnippet()->getDescription(),
-                    'published_at' => Carbon::parse($videoData->getSnippet()->getPublishedAt()),
-                ]
-            );
+            foreach ($videos as $videoData) {
+                $video = YoutubeVideo::updateOrCreate(
+                    [
+                        'youtube_channel_id' => $this->channel->id,
+                        'youtube_video_id' => $videoData->getId(),
+                    ],
+                    [
+                        'title' => $videoData->getSnippet()->getTitle(),
+                        'description' => $videoData->getSnippet()->getDescription(),
+                        'published_at' => Carbon::parse($videoData->getSnippet()->getPublishedAt()),
+                    ]
+                );
 
-            // 2. Insert the Time-Series Metrics
-            YoutubeVideoMetric::create([
-                'youtube_video_id' => $video->id,
-                'view_count' => $videoData->getStatistics()->getViewCount() ?? 0,
-                'like_count' => $videoData->getStatistics()->getLikeCount() ?? 0,
-                'comment_count' => $videoData->getStatistics()->getCommentCount() ?? 0,
-                'scraped_at' => now(),
-            ]);
+                YoutubeVideoMetric::create([
+                    'youtube_video_id' => $video->id,
+                    'view_count' => $videoData->getStatistics()->getViewCount() ?? 0,
+                    'like_count' => $videoData->getStatistics()->getLikeCount() ?? 0,
+                    'comment_count' => $videoData->getStatistics()->getCommentCount() ?? 0,
+                    'scraped_at' => now(),
+                ]);
+            }
+        } catch (Throwable $e) {
+            Log::error("YouTube Sync Failed for Channel {$this->channel->youtube_channel_id}: " . $e->getMessage());
+
+            // If it's a quota error, you might want to fail the job permanently instead of retrying
+            if (str_contains(strtolower($e->getMessage()), 'quota')) {
+                $this->fail($e);
+                return;
+            }
+
+            throw $e;
         }
     }
 }

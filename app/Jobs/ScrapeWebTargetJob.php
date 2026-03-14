@@ -14,6 +14,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 
 class ScrapeWebTargetJob implements ShouldQueue
 {
@@ -21,9 +22,12 @@ class ScrapeWebTargetJob implements ShouldQueue
 
     public $target;
 
-    // Define retries for better resilience
-    public $tries = 3;
-    public $backoff = 60;
+    // Resilience Properties
+    public int $tries = 3; // Retry up to 3 times
+    public int $timeout = 120; // Kill the job if it hangs for more than 2 minutes
+
+    // Exponential backoff: Wait 1 min, then 3 mins, then 10 mins before retrying
+    public array $backoff = [60, 180, 600];
 
     /**
      * Create a new job instance.
@@ -38,6 +42,21 @@ class ScrapeWebTargetJob implements ShouldQueue
      */
     public function handle(WebScraperService $scraperService): void
     {
+        // --- RATE LIMITING ---
+        // Allow 1 request every 10 seconds per domain.
+        // Uses the Database Cache driver.
+        $rateLimitKey = 'scrape:' . $this->target->domain;
+
+        if (RateLimiter::tooManyAttempts($rateLimitKey, 1)) {
+            // Put the job back on the queue with a delay
+            $seconds = RateLimiter::availableIn($rateLimitKey);
+            $this->release($seconds);
+            return;
+        }
+
+        // Register the attempt
+        RateLimiter::hit($rateLimitKey, 10);
+
         $startTime = microtime(true);
         $itemsCount = 0;
 
