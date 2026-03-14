@@ -32,7 +32,7 @@ class YoutubeVideo extends Model
      */
     public function channel(): BelongsTo
     {
-        return $this->belongsTo(YoutubeChannel::class);
+        return $this->belongsTo(YoutubeChannel::class, 'youtube_channel_id', 'id');
     }
 
     /**

@@ -31,6 +31,18 @@ class SyncYouTubeChannelJob implements ShouldQueue
             $videos = $scraper->getLatestVideosForChannel($this->channel->youtube_channel_id);
 
             foreach ($videos as $videoData) {
+                // 1. Get the ISO 8601 duration string (e.g., "PT17M20S")
+                $isoDuration = $videoData->getContentDetails()->getDuration();
+
+                // 2. Convert ISO 8601 to seconds
+                $durationInSeconds = 0;
+                try {
+                    $interval = new \DateInterval($isoDuration);
+                    $durationInSeconds = ($interval->d * 86400) + ($interval->h * 3600) + ($interval->i * 60) + $interval->s;
+                } catch (\Exception $e) {
+                    Log::warning("Could not parse duration for video {$videoData->getId()}: " . $e->getMessage());
+                }
+
                 $video = YoutubeVideo::updateOrCreate(
                     [
                         'youtube_channel_id' => $this->channel->id,
@@ -40,6 +52,7 @@ class SyncYouTubeChannelJob implements ShouldQueue
                         'title' => $videoData->getSnippet()->getTitle(),
                         'description' => $videoData->getSnippet()->getDescription(),
                         'published_at' => Carbon::parse($videoData->getSnippet()->getPublishedAt()),
+                        'duration_seconds' => $durationInSeconds,
                     ]
                 );
 
